@@ -10,6 +10,8 @@ import github3
 from dateutil.parser import parse
 from dotenv import load_dotenv
 
+FILE_PREFIX = "/action/workspace/" if os.environ.get("GITHUB_OUTPUT") else ""
+
 
 def main():  # pragma: no cover
     """
@@ -188,22 +190,29 @@ def write_to_markdown(inactive_repos, inactive_days_threshold, file=None):
         file: A file object to write to. If None, a new file will be created.
 
     """
+    markdown_file_path = f"{FILE_PREFIX}stale_repos.md"
     inactive_repos.sort(key=lambda x: x[1], reverse=True)
-    with file or open("stale_repos.md", "w", encoding="utf-8") as markdown_file:
-        markdown_file.write("# Inactive Repositories\n\n")
-        markdown_file.write(
-            f"The following repos have not had a push event for more than "
-            f"{inactive_days_threshold} days:\n\n"
+    markdown = "# Inactive Repositories\\n\\n"
+    markdown += (
+        f"The following repos have not had a push event for more than "
+        f"{inactive_days_threshold} days:\\n\\n"
+    )
+    markdown += "| Repository URL | Days Inactive | Last Push Date | Visibility |\\n"
+    markdown += "| --- | --- | --- | ---: |\\n"
+    for repo_url, days_inactive, last_push_date, visibility in inactive_repos:
+        markdown += (
+            f"| {repo_url} | {days_inactive} | {last_push_date} | {visibility} |\\n"
         )
-        markdown_file.write(
-            "| Repository URL | Days Inactive | Last Push Date | Visibility |\n"
-        )
-        markdown_file.write("| --- | --- | --- | ---: |\n")
-        for repo_url, days_inactive, last_push_date, visibility in inactive_repos:
-            markdown_file.write(
-                f"| {repo_url} | {days_inactive} | {last_push_date} | {visibility} |\n"
-            )
-    print("Wrote stale repos to stale_repos.md")
+
+    if os.environ.get("GITHUB_OUTPUT"):
+        print("Adding inactive repos to GITHUB_OUTPUT in markdown")
+        cmd = "echo markdown=\"{}\" >> $GITHUB_OUTPUT".format(markdown)
+        os.system(cmd)
+    print(f"GITHUB_OUTPUT: {os.environ.get('GITHUB_OUTPUT')}")
+
+    with file or open(markdown_file_path, "w", encoding="utf-8") as markdown_file:
+        markdown_file.write(markdown)
+    print(f"Wrote stale repos to {markdown_file_path}")
 
 
 def output_to_json(inactive_repos, file=None):
@@ -226,6 +235,7 @@ def output_to_json(inactive_repos, file=None):
     #     "lastPushDate": "2020-01-01"
     #   }
     # ]
+    json_file_path = f"{FILE_PREFIX}stale_repos.json"
     inactive_repos_json = []
     for repo_url, days_inactive, last_push_date, visibility in inactive_repos:
         inactive_repos_json.append(
@@ -239,15 +249,18 @@ def output_to_json(inactive_repos, file=None):
     inactive_repos_json = json.dumps(inactive_repos_json)
 
     # add output to github action output
-    # pylint: disable=unspecified-encoding
     if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as file_handle:
-            print(f"inactiveRepos={inactive_repos_json}", file=file_handle)
+        print("Adding inactive repos to GITHUB_OUTPUT as json")
+        inactive_repos_cmd = "echo inactiveRepos=\"{}\" >> $GITHUB_OUTPUT".format(inactive_repos_json)
+        os.system(inactive_repos_cmd)
+        json_cmd = "echo json=\"{}\" >> $GITHUB_OUTPUT".format(inactive_repos_json)
+        os.system(json_cmd)
 
-    with file or open("stale_repos.json", "w", encoding="utf-8") as json_file:
+    print(f"GITHUB_OUTPUT: {os.environ.get('GITHUB_OUTPUT')}")
+    with file or open(json_file_path, "w", encoding="utf-8") as json_file:
         json_file.write(inactive_repos_json)
 
-    print("Wrote stale repos to stale_repos.json")
+    print(f"wrote stale repos to {json_file_path}")
 
     return inactive_repos_json
 

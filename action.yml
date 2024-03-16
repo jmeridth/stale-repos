@@ -5,9 +5,13 @@ description: 'A GitHub Action to identify stale repos within an organization'
 outputs:
   inactiveRepos:
     description: "Inactive Repos in the organization"
+  json:
+    description: "Inactive Repos as json"
+  markdown:
+    description: "Inactive Repos as markdown"
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/github/stale_repos:v1'
+  image: 'docker://ghcr.io/jmeridth/stale-repos:test'
 branding:
   icon: 'check-square'
   color: 'white'
