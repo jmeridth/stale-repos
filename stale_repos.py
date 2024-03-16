@@ -239,10 +239,10 @@ def output_to_json(inactive_repos, file=None):
     inactive_repos_json = json.dumps(inactive_repos_json)
 
     # add output to github action output
-    # pylint: disable=unspecified-encoding
     if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as file_handle:
-            print(f"inactiveRepos={inactive_repos_json}", file=file_handle)
+        os.environ["GITHUB_OUTPUT"] = (
+            os.environ["GITHUB_OUTPUT"] + f"inactiveRepos={inactive_repos_json}"
+        )
 
     with file or open("stale_repos.json", "w", encoding="utf-8") as json_file:
         json_file.write(inactive_repos_json)
